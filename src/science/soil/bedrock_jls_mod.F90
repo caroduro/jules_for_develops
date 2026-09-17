@@ -7,9 +7,9 @@ CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName='BEDROCK_MOD'
 CONTAINS
 
 SUBROUTINE bedrock (npnts,soil_pts,dzsoil,timestep,soil_index,                 &
-                    tsoil,hcsoil,tsoil_deep_gb,hflux_in)
+                    tsoil,hcsoil,tsoil_deep_gb,hflux_in, dtsd_acc_gb)
 
-USE jules_soil_mod,   ONLY: ns_deep, hcapdeep, hcondeep, dzdeep
+USE jules_soil_mod,   ONLY: ns_deep, hcapdeep, hcondeep, hflux_geo, dzdeep
 USE conversions_mod,  ONLY: zerodegc
 
 USE parkind1,       ONLY: jprb, jpim
@@ -24,41 +24,44 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------
 INTEGER, INTENT(IN)  ::                                                        &
   npnts,                                                                       &
-    ! number of land points
+    ! Number of land points
   soil_pts
-    ! number of soil points
+    ! Number of soil points
 
 REAL(KIND=real_jlslsm), INTENT(IN) ::                                          &
   dzsoil,                                                                      &
-    ! thickness of base soil layer (m).
+    ! Thickness of base soil layer (m).
   timestep
-    ! model timestep (s).
+    ! Model timestep (s).
 
 !-----------------------------------------------------------------------------
 ! Array arguments with INTENT(IN):
 !-----------------------------------------------------------------------------
 INTEGER, INTENT(IN)  ::                                                        &
   soil_index(npnts)
-    ! index of soil points
+    ! Index of soil points
 
 REAL(KIND=real_jlslsm), INTENT(IN) ::                                          &
   tsoil(npnts),                                                                &
-    ! soil temp at base of column (Celsius)
+    ! Soil temp at base of column (Celsius)
   hcsoil(npnts)
-    ! heat conductivity of base soil layer
+    ! Heat conductivity of base soil layer (W/m/K)
 
 !-----------------------------------------------------------------------------
 ! Arguments with INTENT(IN OUT):
 !-----------------------------------------------------------------------------
-REAL(KIND=real_jlslsm), INTENT(IN OUT) :: tsoil_deep_gb(npnts,ns_deep)
+REAL(KIND=real_jlslsm), INTENT(IN OUT) ::                                      &
+  tsoil_deep_gb(npnts,ns_deep),                                                &
     ! Deep soil temperature (K).
+  dtsd_acc_gb(npnts,ns_deep)
+    ! Accumulated correction in deep soil (bedrock) temperature (K).
 
 !-----------------------------------------------------------------------------
 ! Arguments with INTENT(OUT):
 !-----------------------------------------------------------------------------
 REAL(KIND=real_jlslsm), INTENT(OUT) ::                                         &
   hflux_in(npnts)
-    ! heat flux from base of soil column into bedrock layers
+    ! heat flux from base of soil column into bedrock layers (W/m2).
 
 !-----------------------------------------------------------------------------
 ! Local scalar variables.
@@ -67,12 +70,16 @@ INTEGER :: i, j, n  ! loop counter
 
 REAL(KIND=real_jlslsm) ::                                                      &
   hctop,                                                                       &
-    ! interpolated heat conductivity where bedrock joins soil
+    ! interpolated heat conductivity where bedrock joins soil (W/m/K).
   dztop,                                                                       &
     ! interpolated layer thickness for heat transfer between base of soil
-    ! and top of bedrock.
-  tsoil_k
+    ! and top of bedrock (m).
+  tsoil_k,                                                                     &
     ! temperature of base soil layer in Kelvin
+  tsoil_deep_prev,                                                             &
+    ! Previous value of deep soil temperature (K).
+  dtsh_applied
+    ! Change in value of deep soil temperature in this timestep (K).
 
 !-----------------------------------------------------------------------------
 ! Local array variables.
@@ -112,8 +119,9 @@ DO j = 1,soil_pts
   !---------------------------------------------------------------------------
   IF (ns_deep > 1) THEN
     ! bottom:
-    dtsd(i,ns_deep) = hcondeep * timestep * (tsoil_deep_gb(i,ns_deep-1) -      &
-                      tsoil_deep_gb(i,ns_deep)) / (hcapdeep * dzdeep**2)
+    dtsd(i,ns_deep) = timestep * ( hcondeep * (tsoil_deep_gb(i,ns_deep-1) -    &
+                      tsoil_deep_gb(i,ns_deep)) / dzdeep + hflux_geo ) /       &
+                      (hcapdeep * dzdeep)
     ! top:
     dtsd(i,1) = timestep * ( hcondeep * (tsoil_deep_gb(i,2) -                  &
                 tsoil_deep_gb(i,1)) / dzdeep + hflux_in(i) ) /                 &
@@ -134,8 +142,13 @@ DO j = 1,soil_pts
   ! Update the layer temperatures
   !---------------------------------------------------------------------------
   DO n = 1,ns_deep
-    tsoil_deep_gb(i,n) = MAX(tsoil_deep_gb(i,n) + dtsd(i,n),0.0)
-    tsoil_deep_gb(i,n) = MIN(tsoil_deep_gb(i,n),10000.0)
+    tsoil_deep_prev = tsoil_deep_gb(i,n)
+    tsoil_deep_gb(i,n) = MAX(tsoil_deep_gb(i,n) + dtsd(i,n) +                  &
+            dtsd_acc_gb(i,n), 0.0)
+    tsoil_deep_gb(i,n) = MIN(tsoil_deep_gb(i,n), 1000.0)
+    ! Calculate cumulative numerical correction (avoids rounding error)
+    dtsh_applied = tsoil_deep_gb(i,n) - tsoil_deep_prev
+    dtsd_acc_gb(i,n) = dtsd(i,n) + dtsd_acc_gb(i,n) - dtsh_applied
   END DO
 
 END DO

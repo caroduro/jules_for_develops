@@ -82,3 +82,20 @@ class vn82_t155(MacroUpgrade):
 
         # Bump tag to pick up metadata changes
         return config, self.reports
+
+
+class vn82_t76(MacroUpgrade):
+
+    """Upgrade macro from JULES by Carolina Duran Rojas and Eleanor Burke"""
+
+    BEFORE_TAG = "vn8.2_t155"
+    AFTER_TAG = "vn8.2_t76"
+
+    def upgrade(self, config, meta_config=None):
+        """Upgrade a JULES runtime app configuration."""
+
+        # Add settings
+        self.add_setting(config, ["namelist:jules_soil", "hflux_geo"], "0.067")
+        self.change_setting_value(config, ["namelist:jules_soil", "hcondeep"], "3.0")
+        return config, self.reports
+
