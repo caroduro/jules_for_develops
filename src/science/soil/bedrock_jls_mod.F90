@@ -7,7 +7,7 @@ CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName='BEDROCK_MOD'
 CONTAINS
 
 SUBROUTINE bedrock (npnts,soil_pts,dzsoil,timestep,soil_index,                 &
-                    tsoil,hcsoil,tsoil_deep_gb,hflux_in, dtsd_acc_gb)
+                    tsoil,hcsoil,tsoil_deep_gb,hflux_in,tsoil_deep_corr_acc)
 
 USE jules_soil_mod,   ONLY: ns_deep, hcapdeep, hcondeep, hflux_geo, dzdeep
 USE conversions_mod,  ONLY: zerodegc
@@ -53,7 +53,7 @@ REAL(KIND=real_jlslsm), INTENT(IN) ::                                          &
 REAL(KIND=real_jlslsm), INTENT(IN OUT) ::                                      &
   tsoil_deep_gb(npnts,ns_deep),                                                &
     ! Deep soil temperature (K).
-  dtsd_acc_gb(npnts,ns_deep)
+  tsoil_deep_corr_acc(npnts,ns_deep)
     ! Accumulated correction in deep soil (bedrock) temperature (K).
 
 !-----------------------------------------------------------------------------
@@ -61,7 +61,7 @@ REAL(KIND=real_jlslsm), INTENT(IN OUT) ::                                      &
 !-----------------------------------------------------------------------------
 REAL(KIND=real_jlslsm), INTENT(OUT) ::                                         &
   hflux_in(npnts)
-    ! heat flux from base of soil column into bedrock layers (W/m2).
+    ! Heat flux from base of soil column into bedrock layers (W/m2).
 
 !-----------------------------------------------------------------------------
 ! Local scalar variables.
@@ -70,12 +70,12 @@ INTEGER :: i, j, n  ! loop counter
 
 REAL(KIND=real_jlslsm) ::                                                      &
   hctop,                                                                       &
-    ! interpolated heat conductivity where bedrock joins soil (W/m/K).
+    ! Interpolated heat conductivity where bedrock joins soil (W/m/K).
   dztop,                                                                       &
-    ! interpolated layer thickness for heat transfer between base of soil
+    ! Interpolated layer thickness for heat transfer between base of soil
     ! and top of bedrock (m).
   tsoil_k,                                                                     &
-    ! temperature of base soil layer in Kelvin
+    ! Temperature of base soil layer in Kelvin
   tsoil_deep_prev,                                                             &
     ! Previous value of deep soil temperature (K).
   dtsh_applied
@@ -144,11 +144,12 @@ DO j = 1,soil_pts
   DO n = 1,ns_deep
     tsoil_deep_prev = tsoil_deep_gb(i,n)
     tsoil_deep_gb(i,n) = MAX(tsoil_deep_gb(i,n) + dtsd(i,n) +                  &
-            dtsd_acc_gb(i,n), 0.0)
+               tsoil_deep_corr_acc(i,n), 0.0)
     tsoil_deep_gb(i,n) = MIN(tsoil_deep_gb(i,n), 1000.0)
     ! Calculate cumulative numerical correction (avoids rounding error)
     dtsh_applied = tsoil_deep_gb(i,n) - tsoil_deep_prev
-    dtsd_acc_gb(i,n) = dtsd(i,n) + dtsd_acc_gb(i,n) - dtsh_applied
+    tsoil_deep_corr_acc(i,n) = dtsd(i,n) + tsoil_deep_corr_acc(i,n) -          &
+                    dtsh_applied
   END DO
 
 END DO

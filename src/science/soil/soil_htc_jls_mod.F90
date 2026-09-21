@@ -21,8 +21,8 @@ SUBROUTINE soil_htc ( npnts, nshyd, nsurft, soil_pts, timestep, soil_index,    &
                       non_lake_frac, hcap, hcon,                               &
                       sathh, smcl, snowdepth,                                  &
                       surf_ht_flux, v_sat, w_flux,                             &
-                      sthf, sthu, sthu_irr, tsoil, tsoil_deep_gb, dtsd_acc_gb, &
-                      dim_cs1, resp_s_soilt )
+                      sthf, sthu, sthu_irr, tsoil, tsoil_deep_gb,              &
+                      tsoil_deep_corr_acc, dim_cs1, resp_s_soilt )
 
 !Use in relevant subroutines
 USE bedrock_mod,  ONLY: bedrock
@@ -122,7 +122,7 @@ REAL(KIND=real_jlslsm), INTENT(IN OUT) ::                                      &
     ! Sub-surface temperatures (K).
   tsoil_deep_gb(npnts,ns_deep),                                                &
     ! Deep soil temperature (K).
-  dtsd_acc_gb(npnts,ns_deep)
+  tsoil_deep_corr_acc(npnts,ns_deep)
     ! Accumulated correction in deep soil (bedrock) temperature (K).
 
 !-----------------------------------------------------------------------------
@@ -376,7 +376,7 @@ IF (l_bedrock) THEN
 
   CALL bedrock (npnts, soil_pts, dz(nshyd), timestep, soil_index,              &
                 tsl(:,nshyd), hc(:,nshyd), tsoil_deep_gb, hflux_base,          &
-                dtsd_acc_gb)
+                tsoil_deep_corr_acc)
 ELSE
   hflux_base(:) = 0.0
 END IF

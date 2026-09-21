@@ -237,7 +237,7 @@ DO i = 1,nvars
       CALL file_read_var(FILE, var_ids(i),                                     &
                          global_data_2d(:,1:dim_ch4layer))
 
-    CASE ( 'tsoil_deep' )
+    CASE ( 'tsoil_deep', 'tsoil_deep_corr_acc' )
       CALL file_read_var(FILE, var_ids(i), global_data_2d(:,1:ns_deep))
 
     CASE ( 'canopy', 'nsnow', 'rgrain', 'rho_snow', 'snow_tile',               &
@@ -704,6 +704,11 @@ DO i = 1,nvars
   CASE ( 'tsoil_deep' )
     DO n = 1,ns_deep
       CALL scatter_land_field(global_data_2d(:,n), progs%tsoil_deep_gb(:,n))
+    END DO
+
+  CASE ( 'tsoil_deep_corr_acc' )
+    DO n = 1,ns_deep
+      CALL scatter_land_field(global_data_2d(:,n), progs%tsoil_deep_corr_acc(:,n))
     END DO
 
   CASE ( 'sthu_irr' )

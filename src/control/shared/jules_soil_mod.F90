@@ -138,7 +138,6 @@ REAL(KIND=real_jlslsm) ::                                                      &
   hflux_geo = rmdi
       ! Geothermal heat flux (W/m2)
 
-
 !-----------------------------------------------------------------------------
 ! Variable length arrays that can be set using the namelist
 !-----------------------------------------------------------------------------
@@ -214,7 +213,6 @@ errorstatus = 101
 
 ! Check that sm_levels has been set
 IF ( sm_levels < 1 ) THEN
-  errorstatus = 101
   CALL ereport("check_jules_soil", errorstatus,                                &
                "sm_levels must be between 1 and sm_levels_max")
 END IF
