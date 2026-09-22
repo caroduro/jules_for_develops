@@ -4,7 +4,7 @@
 This file contains a single namelist called :nml:lst:`JULES_FIRE_WEATHER_INDEX` that sets time-invariant parameters for performing wildfire-related calculations.
 
 ``JULES_FIRE_WEATHER_INDEX`` namelist members
------------------------------------
+---------------------------------------------
 
 .. nml:namelist:: JULES_FIRE_WEATHER_INDEX
 
